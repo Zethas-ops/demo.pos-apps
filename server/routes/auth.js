@@ -9,10 +9,24 @@ router.post("/login", (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required" });
   }
+<<<<<<< HEAD
   const user = db.prepare("SELECT * FROM USERS WHERE username = ?").get(username);
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: "Invalid username or password" });
   }
+=======
+  const user = db.prepare(
+  "SELECT * FROM USERS WHERE username = ?"
+).get(username);
+
+if (!user) {
+  return res.status(401).json({ error: "User not found" });
+}
+
+if (password !== user.password) {
+  return res.status(401).json({ error: "Invalid password" });
+}
+>>>>>>> 581631b52758174671ad53e62b80be31f40a440e
   let permissions = [];
   if (user.permissions) {
     permissions = JSON.parse(user.permissions);

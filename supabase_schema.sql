@@ -14,6 +14,7 @@ CREATE TABLE users (
   permissions JSONB DEFAULT '[]'::jsonb
 );
 
+<<<<<<< HEAD
 INSERT INTO users (
   name,
   username,
@@ -29,6 +30,8 @@ VALUES (
   '["all"]'::jsonb
 );
 
+=======
+>>>>>>> 581631b52758174671ad53e62b80be31f40a440e
 -- Insert default admin user (password: admin123 - hashed with bcrypt in the app, but for direct insert we can just put a dummy or use the app to create)
 -- Note: The app uses bcrypt. You should create the first admin via the app's signup or use Supabase Auth.
 
