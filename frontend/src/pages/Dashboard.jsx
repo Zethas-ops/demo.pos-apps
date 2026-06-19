@@ -21,11 +21,7 @@ function Dashboard() {
   custom: "Custom Range",
 };
   
-<<<<<<< HEAD
   // Initialize with UTC+7 dates
-=======
-  // Initialize with UTC+7 date
->>>>>>> 581631b52758174671ad53e62b80be31f40a440e
   const initZonedNow = moment().tz(TIMEZONE);
   const [startDate, setStartDate] = useState(initZonedNow.clone().subtract(6, 'days').format("YYYY-MM-DD"));
   const [endDate, setEndDate] = useState(initZonedNow.format("YYYY-MM-DD"));
