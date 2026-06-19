@@ -1,0 +1,333 @@
+import { useState, useEffect } from "react";
+import { Plus, Edit2, Trash2, Shield, CheckSquare, Square } from "lucide-react";
+import { supabase } from "../lib/supabase";
+
+const AVAILABLE_FEATURES = [
+  { id: 'pos', label: 'New Order (POS)' },
+  { id: 'open-bills', label: 'Open Bills' },
+  { id: 'history', label: 'History' },
+  { id: 'menu', label: 'Menu Management' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'promo', label: 'Promotions' },
+  { id: 'payment-methods', label: 'Payment Methods' },
+  { id: 'roles', label: 'Role Management' },
+  { id: 'settings', label: 'Settings' }
+];
+
+function RoleManagement() {
+  const [users, setUsers] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    username: "",
+    password: "",
+    role: "USER",
+    permissions: []
+  });
+  const [error, setError] = useState("");
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase.from('users').select('id, name, username, role, permissions');
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error2) {
+      console.error("Error fetching users:", error2);
+    }
+  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const payload = { ...formData };
+      
+      if (!payload.password) {
+        delete payload.password;
+      }
+
+      let error;
+      if (editingUser) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update(payload)
+          .eq('id', editingUser.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([payload]);
+        error = insertError;
+      }
+
+      if (error) {
+        setError(error.message || "Failed to save user");
+      } else {
+        setIsModalOpen(false);
+        fetchUsers();
+        resetForm();
+      }
+    } catch (error2) {
+      setError("An error occurred while saving");
+    }
+  };
+   const [deleteId, setDeleteId] = useState(null);
+
+  const handleDelete = (id) => {
+    setDeleteId(id);
+  };
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      const { error } = await supabase.from('users').delete().eq('id', deleteId);
+      if (error) {
+        alert(error.message || "Failed to delete user");
+      } else {
+        fetchUsers();
+        setDeleteId(null);
+      }
+    } catch (error2) {
+      console.error("Error deleting user:", error2);
+    }
+  };
+  const openModal = (user) => {
+    if (user) {
+      setEditingUser(user);
+      let perms = [];
+      if (user.permissions) {
+        if (typeof user.permissions === 'string') {
+          try {
+            perms = JSON.parse(user.permissions);
+          } catch (e) {
+            perms = user.permissions.split(',').map(s => s.trim());
+          }
+        } else if (Array.isArray(user.permissions)) {
+          perms = user.permissions;
+        }
+      } else if (user.role === 'ADMIN') {
+        perms = AVAILABLE_FEATURES.map(f => f.id);
+      }
+      setFormData({
+        name: user.name || "",
+        username: user.username,
+        password: "",
+        role: user.role,
+        permissions: perms
+      });
+    } else {
+      resetForm();
+    }
+    setError("");
+    setIsModalOpen(true);
+  };
+  const resetForm = () => {
+    setEditingUser(null);
+    setFormData({
+      name: "",
+      username: "",
+      password: "",
+      role: "USER",
+      permissions: []
+    });
+  };
+  return <div className="p-8 space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Role Management</h1>
+        <button
+    onClick={() => openModal()}
+    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl flex items-center justify-center space-x-2 transition-colors shadow-md shadow-blue-200 w-full sm:w-auto whitespace-nowrap"
+  >
+          <Plus className="w-5 h-5" />
+          Add User
+        </button>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead className="bg-gray-200 dark:bg-gray-600 border-b border-gray-200 dark:border-gray-600">
+            <tr>
+              <th className="p-4 font-bold text-gray-600 dark:text-gray-300">Name</th>
+              <th className="p-4 font-bold text-gray-600 dark:text-gray-300">Username</th>
+              <th className="p-4 font-bold text-gray-600 dark:text-gray-300">Role</th>
+              <th className="p-4 font-bold text-gray-600 dark:text-gray-300 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {users.map((user) => <tr key={user.id}>
+                <td className="p-2 font-medium text-gray-800 whitespace-nowrap">
+                  <div className="p-4 font-medium text-gray-800 dark:text-gray-300">{user.name || "-"}</div>
+                </td>
+                <td className="p-2 font-medium text-gray-800 whitespace-nowrap">
+                  <div className="p-4 font-medium text-gray-800 dark:text-gray-300">{user.username}</div>
+                </td>
+                <td className="p-2 font-medium text-gray-800 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === "ADMIN" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"}`}>
+                    {user.role === "ADMIN" && <Shield className="w-3 h-3 mr-1" />}
+                    {user.role}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+    onClick={() => openModal(user)}
+    className="text-indigo-600 hover:text-indigo-900 mr-4"
+  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                  <button
+    onClick={() => handleDelete(user.id)}
+    className="text-red-600 hover:text-red-900"
+  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </td>
+              </tr>)}
+          </tbody>
+        </table>
+      </div>
+
+      {isModalOpen && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">
+              {editingUser ? "Edit User" : "Add New User"}
+            </h2>
+            
+            {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+    type="text"
+    required
+    value={formData.name}
+    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+    placeholder="Full Name"
+  />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input
+    type="text"
+    required
+    value={formData.username}
+    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+  />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password {editingUser && <span className="text-gray-400 font-normal">(Leave blank to keep current)</span>}
+                </label>
+                <input
+    type="password"
+    required={!editingUser}
+    value={formData.password}
+    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+  />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+    value={formData.role}
+    onChange={(e) => {
+      const newRole = e.target.value;
+      setFormData({ 
+        ...formData, 
+        role: newRole,
+        permissions: newRole === 'ADMIN' ? AVAILABLE_FEATURES.map(f => f.id) : []
+      });
+    }}
+    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+  >
+                  <option value="USER">User (Cashier)</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Feature Access</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {AVAILABLE_FEATURES.map((feature) => {
+                    const currentPerms = Array.isArray(formData.permissions) ? formData.permissions : [];
+                    const isChecked = currentPerms.includes(feature.id);
+                    return (
+                      <div 
+                        key={feature.id}
+                        className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 border border-transparent hover:border-gray-200"
+                        onClick={() => {
+                          const newPerms = isChecked 
+                            ? currentPerms.filter(p => p !== feature.id)
+                            : [...currentPerms, feature.id];
+                          setFormData({ ...formData, permissions: newPerms });
+                        }}
+                      >
+                        {isChecked ? (
+                          <CheckSquare className="w-5 h-5 text-indigo-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                        <span className="text-sm text-gray-700">{feature.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+    type="button"
+    onClick={() => setIsModalOpen(false)}
+    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+  >
+                  Cancel
+                </button>
+                <button
+    type="submit"
+    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+  >
+                  {editingUser ? "Save Changes" : "Add User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>}
+        
+      {deleteId && <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="p-6 border-b bg-gray-50 dark:bg-gray-900">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Confirm Deletion</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-600 dark:text-gray-300">Are you sure you want to delete this user? This action cannot be undone.</p>
+            </div>
+            <div className="p-6 border-t bg-gray-50 dark:bg-gray-900 flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="px-6 py-3 font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:bg-gray-600 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors shadow-md shadow-red-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>}
+
+    </div>;
+}
+export {
+  RoleManagement as default
+};
