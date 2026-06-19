@@ -146,13 +146,6 @@ INSERT INTO store_profile (id, store_name, address, phone)
 VALUES (1, 'My Coffee Shop', '123 Coffee Street', '081234567890')
 ON CONFLICT (id) DO NOTHING;
 
--- 12. Create Payment Methods Table
-CREATE TABLE payment_methods (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  is_active BOOLEAN DEFAULT TRUE
-);
-
 -- Insert default payment methods
 INSERT INTO payment_methods (name) VALUES ('Cash'), ('QRIS'), ('Bank Transfer'), ('EDC');
 
